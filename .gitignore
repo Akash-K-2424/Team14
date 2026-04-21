@@ -9,6 +9,7 @@ node_modules/
 # build output
 dist/
 build/
+client/.vite/
 
 # editor directories and files
 .vscode/

@@ -85,12 +85,24 @@ Then open:
 - Frontend: `http://localhost:5173` (or the port shown by Vite)
 - Backend: `http://localhost:5001`
 
+## Screenshots
+
+### Add Member Page
+![Add Member Page](screenshots/add-member-page.png)
+
+### Member Details (Initial)
+![Member Details Initial](screenshots/member-details-initial.png)
+
+### Member Details (Improved UI)
+![Member Details Improved](screenshots/member-details-improved.png)
+
 ## Folder Structure
 
 ```text
 Team-14/
 ├── client/
 ├── server/
+├── screenshots/
 ├── .gitignore
 └── README.md
 ```
