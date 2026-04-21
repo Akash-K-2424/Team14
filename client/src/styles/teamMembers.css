@@ -1,0 +1,270 @@
+.team-page-wrapper {
+  min-height: 100vh;
+  padding: 100px 16px 40px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  color: #111827;
+}
+
+.team-container {
+  width: 100%;
+  max-width: 1040px;
+  text-align: center;
+}
+
+.team-title {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.team-subtitle {
+  color: #4b5563;
+  margin-bottom: 1.5rem;
+}
+
+.team-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.team-btn {
+  display: inline-block;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.team-btn-primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.team-btn-secondary {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.team-form-card,
+.team-details-card {
+  width: 100%;
+  max-width: 620px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  color: #111827;
+  overflow: hidden;
+}
+
+.team-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.team-form input,
+.team-form textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  background: #ffffff;
+  color: #111827;
+}
+
+.team-form input::placeholder,
+.team-form textarea::placeholder {
+  color: #6b7280;
+}
+
+.team-form textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.team-grid {
+  margin-top: 20px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.team-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  color: #111827;
+  text-align: center;
+}
+
+.team-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 10px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
+}
+
+.team-avatar-large {
+  width: 176px;
+  height: 176px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  border: 3px solid rgba(37, 99, 235, 0.35);
+}
+
+.team-error {
+  color: #dc2626;
+  font-size: 0.95rem;
+}
+
+.dark .team-page-wrapper {
+  color: #e5e7eb;
+}
+
+.dark .team-subtitle {
+  color: #9ca3af;
+}
+
+.dark .team-form-card,
+.dark .team-details-card,
+.dark .team-card {
+  background: #111827;
+  color: #e5e7eb;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.dark .team-form input,
+.dark .team-form textarea {
+  background: #1f2937;
+  border-color: #374151;
+  color: #f3f4f6;
+}
+
+.dark .team-form input::placeholder,
+.dark .team-form textarea::placeholder {
+  color: #9ca3af;
+}
+
+.dark .team-btn-secondary {
+  background: #374151;
+  color: #f3f4f6;
+}
+
+.team-details-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.team-details-header {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px 0;
+}
+
+.team-details-name {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.team-details-role {
+  margin-top: -2px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.team-details {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.team-detail-row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 12px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 12px;
+}
+
+.team-detail-row-multiline {
+  align-items: start;
+}
+
+.team-detail-label {
+  font-weight: 800;
+  color: #111827;
+}
+
+.team-detail-value {
+  color: #111827;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.dark .team-details-role {
+  color: #9ca3af;
+}
+
+.dark .team-detail-row {
+  border-color: #374151;
+  background: rgba(31, 41, 55, 0.7);
+}
+
+.dark .team-detail-label,
+.dark .team-detail-value {
+  color: #f3f4f6;
+}
+
+.team-photo-edit {
+  width: 100%;
+}
+
+.team-photo-edit-row {
+  width: 100%;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.team-photo-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+}
+
+.team-photo-label input[type="file"] {
+  font-weight: 600;
+  max-width: 250px;
+}
+
+@media (max-width: 420px) {
+  .team-detail-row {
+    grid-template-columns: 1fr;
+  }
+}
