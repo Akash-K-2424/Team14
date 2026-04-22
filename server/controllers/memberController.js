@@ -4,9 +4,23 @@ const path = require('path');
 
 const createMember = async (req, res, next) => {
   try {
-    const { fullName, role, email, contact, bio = '' } = req.body;
+    const {
+      fullName,
+      rollNumber,
+      year,
+      degree,
+      aboutProject = '',
+      hobbies = '',
+      certificate = '',
+      internship = '',
+      aboutAim = '',
+      role = 'Student',
+      email = '',
+      contact = '',
+      bio = '',
+    } = req.body;
 
-    if (!fullName || !role || !email || !contact) {
+    if (!fullName || !rollNumber || !year || !degree) {
       return res.status(400).json({ error: 'Please provide all required fields' });
     }
 
@@ -16,6 +30,14 @@ const createMember = async (req, res, next) => {
 
     const member = await Member.create({
       fullName,
+      rollNumber,
+      year,
+      degree,
+      aboutProject,
+      hobbies,
+      certificate,
+      internship,
+      aboutAim,
       role,
       email,
       contact,
@@ -60,9 +82,31 @@ const updateMember = async (req, res, next) => {
       return res.status(404).json({ error: 'Member not found' });
     }
 
-    const { fullName, role, email, contact, bio } = req.body || {};
+    const {
+      fullName,
+      rollNumber,
+      year,
+      degree,
+      aboutProject,
+      hobbies,
+      certificate,
+      internship,
+      aboutAim,
+      role,
+      email,
+      contact,
+      bio,
+    } = req.body || {};
 
     if (typeof fullName === 'string') member.fullName = fullName;
+    if (typeof rollNumber === 'string') member.rollNumber = rollNumber;
+    if (typeof year === 'string') member.year = year;
+    if (typeof degree === 'string') member.degree = degree;
+    if (typeof aboutProject === 'string') member.aboutProject = aboutProject;
+    if (typeof hobbies === 'string') member.hobbies = hobbies;
+    if (typeof certificate === 'string') member.certificate = certificate;
+    if (typeof internship === 'string') member.internship = internship;
+    if (typeof aboutAim === 'string') member.aboutAim = aboutAim;
     if (typeof role === 'string') member.role = role;
     if (typeof email === 'string') member.email = email;
     if (typeof contact === 'string') member.contact = contact;

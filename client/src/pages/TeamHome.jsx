@@ -5,10 +5,8 @@ export default function TeamHome() {
   return (
     <div className="team-page-wrapper">
       <div className="team-container">
-        <h1 className="team-title">Student Team Members Management Application</h1>
-        <p className="team-subtitle">
-          Welcome to Team ResuAI. Use this module to add and manage team members.
-        </p>
+        <h1 className="team-title">TEAM 14</h1>
+        <p className="team-subtitle">Welcome to Team 14 Team Management</p>
         <div className="team-actions">
           <Link to="/team/add-member" className="team-btn team-btn-primary">
             Add Member

@@ -7,20 +7,60 @@ const memberSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    role: {
+    rollNumber: {
       type: String,
       required: true,
       trim: true,
     },
-    email: {
+    year: {
       type: String,
       required: true,
+      trim: true,
+    },
+    degree: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    aboutProject: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    hobbies: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    certificate: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    internship: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    aboutAim: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    role: {
+      type: String,
+      default: 'Student',
+      trim: true,
+    },
+    email: {
+      type: String,
+      default: '',
       trim: true,
       lowercase: true,
     },
     contact: {
       type: String,
-      required: true,
+      default: '',
       trim: true,
     },
     image: {

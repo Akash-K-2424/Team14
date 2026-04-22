@@ -12,7 +12,12 @@ export default function ViewMembers() {
     const fetchMembers = async () => {
       try {
         const response = await api.get('/members');
-        setMembers(response.data);
+        if (Array.isArray(response.data)) {
+          setMembers(response.data);
+        } else {
+          setMembers([]);
+          setError('Unexpected API response. Please restart frontend and backend servers.');
+        }
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to fetch members.');
       } finally {
@@ -26,7 +31,7 @@ export default function ViewMembers() {
   return (
     <div className="team-page-wrapper">
       <div className="team-container">
-        <h2>Team Members</h2>
+        <h2 className="team-members-title">MEET OUR AMAZING TEAM</h2>
 
         {loading && <p>Loading members...</p>}
         {error && <p className="team-error">{error}</p>}
@@ -44,6 +49,10 @@ export default function ViewMembers() {
               </div>
             ))}
           </div>
+        )}
+
+        {!loading && !error && members.length === 0 && (
+          <p>No members found. Add a member first.</p>
         )}
       </div>
     </div>
