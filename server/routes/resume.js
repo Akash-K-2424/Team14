@@ -6,6 +6,7 @@ const {
   getResume,
   updateResume,
   deleteResume,
+  analyzeResume,
 } = require('../controllers/resumeController');
 const { protect } = require('../middleware/auth');
 
@@ -20,5 +21,7 @@ router.route('/:id')
   .get(getResume)
   .put(updateResume)
   .delete(deleteResume);
+
+router.post('/:id/ats-analyze', analyzeResume);
 
 module.exports = router;

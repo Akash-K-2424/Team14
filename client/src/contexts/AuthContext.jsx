@@ -48,20 +48,13 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  // Verify token in background ONLY if we don't have fresh data
+  // Verify token whenever token changes
   useEffect(() => {
     const loadUser = async () => {
       if (!token) {
         console.log('AuthTrace: No token, skipping verify');
         setLoading(false);
         setUser(null);
-        return;
-      }
-
-      // If we already have a user and we're NOT in a loading state, 
-      // it means we just logged in. Skip redundant verification.
-      if (user && !loading) {
-        console.log('AuthTrace: User already present, skipping background verify');
         return;
       }
 
@@ -73,7 +66,10 @@ export function AuthProvider({ children }) {
         localStorage.setItem('resuai_user', JSON.stringify(data.user));
       } catch (error) {
         console.error('AuthTrace: Background verify failed', error);
-        logout();
+        localStorage.removeItem('resuai_token');
+        localStorage.removeItem('resuai_user');
+        setToken(null);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -85,12 +81,22 @@ export function AuthProvider({ children }) {
   // Login
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
+    return data;
+  };
+
+  const verifyLoginOtp = async (email, otp) => {
+    const { data } = await api.post('/auth/login/verify-otp', { email, otp });
     return handleAuthSuccess(data);
   };
 
   // Signup
   const signup = async (name, email, password) => {
     const { data } = await api.post('/auth/signup', { name, email, password });
+    return data;
+  };
+
+  const verifySignupOtp = async (email, otp) => {
+    const { data } = await api.post('/auth/signup/verify-otp', { email, otp });
     return handleAuthSuccess(data);
   };
 
@@ -106,7 +112,9 @@ export function AuthProvider({ children }) {
     loading,
     isAuthenticated: !!user,
     login,
+    verifyLoginOtp,
     signup,
+    verifySignupOtp,
     googleLogin,
     logout,
   };
@@ -128,5 +136,3 @@ export function useAuth() {
   }
   return context;
 }
-
-export default AuthContext;

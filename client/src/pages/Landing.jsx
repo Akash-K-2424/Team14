@@ -96,67 +96,20 @@ export default function Landing() {
               </Link>
             </div>
 
-            {/* Social proof */}
-            <div className="mt-12 flex items-center justify-center gap-6 text-sm text-dark-400 dark:text-dark-500 animate-slide-up" style={{ animationDelay: '0.4s' }}>
-              <div className="flex items-center gap-1.5">
-                <div className="flex -space-x-2">
-                  {['bg-primary-400', 'bg-green-400', 'bg-purple-400', 'bg-pink-400'].map((color, i) => (
-                    <div key={i} className={`w-7 h-7 rounded-full ${color} border-2 border-white dark:border-dark-900`}></div>
-                  ))}
-                </div>
-                <span className="ml-2 font-medium">1,000+ users</span>
-              </div>
-              <span className="text-dark-300 dark:text-dark-600">•</span>
-              <span>⭐ 4.9/5 rating</span>
-            </div>
+            {/* Social proof removed */}
           </div>
 
-          {/* Hero Preview - Resume mockup */}
+          {/* Hero Preview - product screenshot */}
           <div className="mt-16 max-w-5xl mx-auto animate-slide-up" style={{ animationDelay: '0.5s' }}>
             <div className="relative">
               <div className="absolute -inset-4 bg-gradient-to-r from-primary-500/20 to-indigo-500/20 rounded-3xl blur-2xl"></div>
-              <div className="relative glass-card p-6 sm:p-8 rounded-2xl">
-                {/* Fake browser bar */}
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                  </div>
-                  <div className="flex-1 ml-3 h-8 bg-dark-100 dark:bg-dark-800 rounded-lg flex items-center px-3">
-                    <span className="text-xs text-dark-400">app.resuai.com/builder</span>
-                  </div>
-                </div>
-                {/* Resume preview content */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-1 space-y-3">
-                    <div className="h-4 w-3/4 bg-primary-200 dark:bg-primary-800/30 rounded-full"></div>
-                    <div className="h-3 w-full bg-dark-100 dark:bg-dark-800 rounded-full"></div>
-                    <div className="h-3 w-2/3 bg-dark-100 dark:bg-dark-800 rounded-full"></div>
-                    <div className="h-3 w-5/6 bg-dark-100 dark:bg-dark-800 rounded-full"></div>
-                    <div className="mt-4 h-4 w-1/2 bg-primary-200 dark:bg-primary-800/30 rounded-full"></div>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {['w-16', 'w-14', 'w-20', 'w-12', 'w-18', 'w-14'].map((w, i) => (
-                        <div key={i} className={`h-6 ${w} bg-primary-100 dark:bg-primary-900/30 rounded-full`}></div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="md:col-span-2 space-y-4">
-                    <div className="h-6 w-2/3 bg-dark-800 dark:bg-dark-200 rounded-full"></div>
-                    <div className="h-3 w-1/3 bg-dark-200 dark:bg-dark-700 rounded-full"></div>
-                    <div className="space-y-2 mt-4">
-                      <div className="h-3 w-full bg-dark-100 dark:bg-dark-800 rounded-full"></div>
-                      <div className="h-3 w-11/12 bg-dark-100 dark:bg-dark-800 rounded-full"></div>
-                      <div className="h-3 w-4/5 bg-dark-100 dark:bg-dark-800 rounded-full"></div>
-                    </div>
-                    <div className="h-4 w-1/2 bg-primary-200 dark:bg-primary-800/30 rounded-full mt-6"></div>
-                    <div className="space-y-2">
-                      <div className="h-3 w-full bg-dark-100 dark:bg-dark-800 rounded-full"></div>
-                      <div className="h-3 w-10/12 bg-dark-100 dark:bg-dark-800 rounded-full"></div>
-                      <div className="h-3 w-3/4 bg-dark-100 dark:bg-dark-800 rounded-full"></div>
-                    </div>
-                  </div>
-                </div>
+              <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-sm shadow-elevated">
+                <img
+                  src="/landing-hero.png"
+                  alt="Resume builder preview"
+                  className="w-full h-auto block"
+                  loading="lazy"
+                />
               </div>
             </div>
           </div>
@@ -221,7 +174,7 @@ export default function Landing() {
       <footer className="py-8 bg-dark-50 dark:bg-dark-950 border-t border-dark-100 dark:border-dark-800">
         <div className="section-container text-center">
           <p className="text-sm text-dark-400">
-            © {new Date().getFullYear()} ResuAI. Built with ❤️ and AI.
+            © {new Date().getFullYear()} ResuAI.
           </p>
         </div>
       </footer>

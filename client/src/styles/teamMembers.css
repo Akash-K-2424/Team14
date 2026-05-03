@@ -101,6 +101,38 @@
   resize: vertical;
 }
 
+.team-file-input-native {
+  display: none;
+}
+
+.team-file-picker {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.team-file-button {
+  border: 1px solid #a8a8a8;
+  background: #f3f3f3;
+  color: #111827;
+  border-radius: 3px;
+  padding: 3px 10px;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.team-file-name {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+
 .team-grid {
   margin-top: 20px;
   display: grid;
@@ -163,6 +195,22 @@
   border-color: #374151;
   color: #f3f4f6;
 }
+
+.dark .team-file-picker {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark .team-file-button {
+  background: #e5e7eb;
+  color: #111827;
+  border-color: #9ca3af;
+}
+
+.dark .team-file-name {
+  color: #d1d5db;
+}
+
 
 .dark .team-form input::placeholder,
 .dark .team-form textarea::placeholder {

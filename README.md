@@ -48,6 +48,37 @@ npm install
   - `JWT_SECRET=<your_secret>`
   - `CLIENT_URL=http://localhost:5173`
   - `OPENAI_API_KEY=<your_key_if_used>`
+  - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+
+### OTP Email Setup (Required for Login/Signup OTP)
+
+Copy the template and edit values:
+
+```bash
+cd server
+cp .env.example .env
+```
+
+Use either provider:
+
+- **Mailtrap (recommended for testing):**
+  - `SMTP_HOST=sandbox.smtp.mailtrap.io`
+  - `SMTP_PORT=2525`
+  - `SMTP_USER=<mailtrap_username>`
+  - `SMTP_PASS=<mailtrap_password>`
+  - `SMTP_FROM="ResuAI <no-reply@resuai.local>"`
+
+- **Gmail (real inbox):**
+  - Enable 2-step verification in Google account
+  - Create an App Password
+  - Set:
+    - `SMTP_HOST=smtp.gmail.com`
+    - `SMTP_PORT=587`
+    - `SMTP_USER=<your_gmail>`
+    - `SMTP_PASS=<your_app_password>`
+    - `SMTP_FROM="ResuAI <your_gmail>"`
+
+Set `ALLOW_DEV_OTP_FALLBACK=false` in `.env` to force real SMTP-only OTP delivery.
 
 ## API Endpoints
 
@@ -59,11 +90,26 @@ npm install
 
 ### Existing APIs
 - `GET /api/health` -> Health check
-- `POST /api/auth/signup` -> Register user
-- `POST /api/auth/login` -> Login user
+- `POST /api/auth/signup` -> Signup step 1 (send OTP)
+- `POST /api/auth/signup/verify-otp` -> Signup step 2 (verify OTP + create session)
+- `POST /api/auth/login` -> Login step 1 (send OTP)
+- `POST /api/auth/login/verify-otp` -> Login step 2 (verify OTP + create session)
 - Resume and AI routes are available under:
   - `/api/resumes`
   - `/api/ai`
+
+### ATS Endpoint Functional Test (Authenticated)
+
+You can run a live ATS endpoint test against an existing resume:
+
+```bash
+cd server
+ATS_TEST_TOKEN=<jwt_token> ATS_TEST_RESUME_ID=<resume_id> npm run test:ats
+```
+
+Optional envs:
+- `ATS_TEST_BASE_URL` (default: `http://localhost:5001/api`)
+- `ATS_TEST_JOB_DESCRIPTION` (custom JD text for keyword matching)
 
 ## How To Run The App
 

@@ -116,7 +116,19 @@ export default function AddMember() {
             value={formData.aboutAim}
             onChange={handleChange}
           />
-          <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files?.[0] || null)} />
+          <input
+            id="member-image"
+            className="team-file-input-native"
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImage(e.target.files?.[0] || null)}
+          />
+          <div className="team-file-picker">
+            <label htmlFor="member-image" className="team-file-button">
+              Browse
+            </label>
+            <span className="team-file-name">{image ? image.name : 'No file chosen'}</span>
+          </div>
 
           {error && <p className="team-error">{error}</p>}
 

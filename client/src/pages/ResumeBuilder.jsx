@@ -12,6 +12,8 @@ import {
   HiOutlineDownload,
   HiOutlineMoon,
   HiOutlineSun,
+  HiOutlineBadgeCheck,
+  HiOutlineClipboardCopy,
 } from 'react-icons/hi';
 import { useReactToPrint } from 'react-to-print';
 
@@ -35,11 +37,13 @@ export default function ResumeBuilder() {
   const [isAutosaving, setIsAutosaving] = useState(false);
   const [activeSection, setActiveSection] = useState('personal');
   const [aiLoading, setAiLoading] = useState({});
+  const [atsLoading, setAtsLoading] = useState(false);
+  const [atsResult, setAtsResult] = useState(null);
   const { isDarkMode, toggleTheme } = useTheme();
   const componentRef = useRef();
   const lastSavedData = useRef(null);
 
-  const handlePrint = useReactToPrint({
+  const printResume = useReactToPrint({
     contentRef: componentRef,
     documentTitle: resume?.personalInfo?.fullName ? `${resume.personalInfo.fullName} Resume` : 'Resume',
   });
@@ -50,8 +54,9 @@ export default function ResumeBuilder() {
       try {
         const { data } = await api.get(`/resumes/${id}`);
         setResume(data);
+        setAtsResult(data.ats || null);
         lastSavedData.current = JSON.stringify(data);
-      } catch (error) {
+      } catch {
         toast.error('Resume not found');
         navigate('/dashboard');
       } finally {
@@ -115,11 +120,13 @@ export default function ResumeBuilder() {
         projects: resume.projects,
         certifications: resume.certifications,
         languages: resume.languages,
+        jobDescription: resume.jobDescription,
       });
       setResume(data);
+      setAtsResult(data.ats || null);
       lastSavedData.current = JSON.stringify(data);
       toast.success('Resume saved!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to save resume');
     } finally {
       setSaving(false);
@@ -147,9 +154,10 @@ export default function ResumeBuilder() {
           projects: resume.projects,
           certifications: resume.certifications,
           languages: resume.languages,
+          jobDescription: resume.jobDescription,
         });
         lastSavedData.current = currentData;
-      } catch (error) {
+      } catch {
         // Silent fail for autosave
       } finally {
         setIsAutosaving(false);
@@ -163,17 +171,70 @@ export default function ResumeBuilder() {
   const handleAISummary = async () => {
     setAiLoading((p) => ({ ...p, summary: true }));
     try {
+      const inferredRole =
+        resume.experience?.[0]?.position ||
+        (resume.jobDescription || '').split('\n')[0].slice(0, 80) ||
+        resume.title ||
+        'Professional';
       const { data } = await api.post('/ai/generate-summary', {
-        jobTitle: resume.personalInfo?.fullName ? `professional` : 'professional',
+        jobTitle: inferredRole,
         experience: resume.experience?.map((e) => e.position).filter(Boolean).join(', '),
         skills: resume.skills?.join(', '),
       });
       updateField('summary', data.result);
       toast.success('Summary generated!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to generate summary');
     } finally {
       setAiLoading((p) => ({ ...p, summary: false }));
+    }
+  };
+
+  const handleAIGenerateResume = async () => {
+    setAiLoading((p) => ({ ...p, generateResume: true }));
+    try {
+      const inferredRole =
+        resume.experience?.[0]?.position ||
+        (resume.jobDescription || '').split('\n')[0].slice(0, 80) ||
+        resume.title ||
+        'Target role';
+
+      const { data } = await api.post('/ai/generate-resume', {
+        resume,
+        jobDescription: resume.jobDescription || '',
+        targetRole: inferredRole,
+      });
+
+      const patch = data?.patch || {};
+
+      setResume((prev) => {
+        const next = { ...prev };
+        if (typeof patch.summary === 'string' && patch.summary.trim()) next.summary = patch.summary.trim();
+        if (Array.isArray(patch.skills) && patch.skills.length) next.skills = [...new Set(patch.skills)];
+
+        if (Array.isArray(patch.experience) && patch.experience.length) {
+          // Preserve company/position metadata if AI omitted it
+          next.experience = patch.experience.map((e, idx) => ({
+            ...prev.experience?.[idx],
+            ...e,
+          }));
+        }
+
+        if (Array.isArray(patch.projects) && patch.projects.length) {
+          next.projects = patch.projects.map((p, idx) => ({
+            ...prev.projects?.[idx],
+            ...p,
+          }));
+        }
+
+        return next;
+      });
+
+      toast.success('Generated resume content!');
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to generate resume');
+    } finally {
+      setAiLoading((p) => ({ ...p, generateResume: false }));
     }
   };
 
@@ -190,7 +251,7 @@ export default function ResumeBuilder() {
       const { data } = await api.post('/ai/improve-text', { text, context: 'experience description' });
       updateArrayItem(arrayName, index, field, data.result);
       toast.success('Text improved!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to improve text');
     } finally {
       setAiLoading((p) => ({ ...p, [key]: false }));
@@ -208,10 +269,131 @@ export default function ResumeBuilder() {
       });
       updateField('skills', [...new Set([...(resume.skills || []), ...data.result])]);
       toast.success('Skills suggested!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to suggest skills');
     } finally {
       setAiLoading((p) => ({ ...p, skills: false }));
+    }
+  };
+
+  const handleAnalyzeATS = async () => {
+    setAtsLoading(true);
+    try {
+      const { data } = await api.post(`/resumes/${id}/ats-analyze`, {
+        jobDescription: resume.jobDescription || '',
+      });
+      setAtsResult(data.ats);
+      setResume((prev) => ({ ...prev, ats: data.ats }));
+      toast.success('ATS analysis updated');
+    } catch {
+      toast.error('Failed to analyze ATS score');
+    } finally {
+      setAtsLoading(false);
+    }
+  };
+
+  const handleApplyMissingSkills = () => {
+    if (!atsResult?.missingKeywords?.length) {
+      toast.error('No missing keywords found');
+      return;
+    }
+    const genericWords = new Set([
+      'experience', 'skills', 'skill', 'applications', 'strong', 'excellent', 'good',
+      'competent', 'analytical', 'objective', 'concepts', 'required', 'requirements',
+      'include', 'including', 'submitted', 'least',
+    ]);
+    const cleanedMissing = (atsResult.missingKeywords || [])
+      .map((k) => String(k).trim())
+      .filter((k) => k.length >= 3)
+      .filter((k) => /[a-z]/i.test(k))
+      .filter((k) => !genericWords.has(k.toLowerCase()))
+      .slice(0, 8);
+    const merged = [...new Set([...(resume.skills || []), ...cleanedMissing])];
+    updateField('skills', merged);
+    toast.success('Added top missing keywords into skills');
+  };
+
+  const handleImproveSummaryFromATS = async () => {
+    setAiLoading((prev) => ({ ...prev, atsSummary: true }));
+    try {
+      const keywords = (atsResult?.missingKeywords || []).slice(0, 5).join(', ');
+      const summaryText = (resume.summary || '')
+        .replace(/include these keywords naturally:[^.]*/gi, '')
+        .trim();
+      if (!summaryText) {
+        toast.error('Write a summary first');
+        return;
+      }
+      const { data } = await api.post('/ai/improve-text', {
+        text: summaryText,
+        context: keywords
+          ? `professional summary with natural integration of: ${keywords}`
+          : 'professional summary',
+      });
+      updateField('summary', data.result);
+      toast.success('Summary improved for ATS');
+    } catch {
+      toast.error('Failed to improve summary');
+    } finally {
+      setAiLoading((prev) => ({ ...prev, atsSummary: false }));
+    }
+  };
+
+  const handleCleanSummary = () => {
+    const original = (resume.summary || '').trim();
+    if (!original) {
+      toast.error('Summary is empty');
+      return;
+    }
+
+    const cleaned = original
+      .replace(/include these keywords naturally:[^.]*(\.)?/gi, ' ')
+      .replace(/add missing keywords naturally:[^.]*(\.)?/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!cleaned || cleaned === original) {
+      toast.success('Summary is already clean');
+      return;
+    }
+
+    updateField('summary', cleaned);
+    toast.success('Summary cleaned');
+  };
+
+  const getCriticalExportWarnings = () => {
+    const warnings = [];
+    if (!resume.personalInfo?.fullName || !resume.personalInfo?.email || !resume.personalInfo?.phone) {
+      warnings.push('Contact details are incomplete.');
+    }
+    if (!(resume.summary || '').trim()) {
+      warnings.push('Professional summary is missing.');
+    }
+    if (!(resume.experience || []).length) {
+      warnings.push('Work experience section is empty.');
+    }
+    if ((resume.skills || []).length < 4) {
+      warnings.push('Skills section has very few keywords.');
+    }
+    return warnings;
+  };
+
+  const handleDownloadPDF = () => {
+    const warnings = getCriticalExportWarnings();
+    if (warnings.length > 0) {
+      toast.warning(`ATS warning: ${warnings[0]}`);
+    }
+    printResume();
+  };
+
+  const handleCopyAtsCurl = async () => {
+    const sampleJD = (resume.jobDescription || 'Paste job description here').replace(/\n/g, ' ');
+    const curlCommand = `curl -X POST "http://localhost:5001/api/resumes/${id}/ats-analyze" -H "Authorization: Bearer <JWT_TOKEN>" -H "Content-Type: application/json" -d '{"jobDescription":"${sampleJD.replace(/"/g, '\\"')}" }'`;
+    try {
+      await navigator.clipboard.writeText(curlCommand);
+      toast.success('ATS curl command copied');
+    } catch {
+      toast.error('Failed to copy curl command');
     }
   };
 
@@ -224,6 +406,7 @@ export default function ResumeBuilder() {
     { id: 'skills', label: 'Skills' },
     { id: 'projects', label: 'Projects' },
     { id: 'certifications', label: 'Certifications' },
+    { id: 'jobDescription', label: 'Job Description' },
   ];
 
   if (loading) {
@@ -276,14 +459,44 @@ export default function ResumeBuilder() {
               <option value="modern">Modern</option>
               <option value="classic">Classic</option>
               <option value="minimal">Minimal</option>
+              <option value="ats">ATS (Table)</option>
             </select>
             <button
-              onClick={() => handlePrint()}
+              onClick={handleDownloadPDF}
               className="btn-secondary text-sm !px-3 sm:!px-4 !py-2"
               title="Download PDF"
             >
               <HiOutlineDownload className="w-4 h-4 sm:mr-1.5" />
               <span className="hidden sm:inline">Download PDF</span>
+            </button>
+            <button
+              onClick={handleAIGenerateResume}
+              disabled={!!aiLoading.generateResume || saving || isAutosaving}
+              className="btn-secondary text-sm !px-3 sm:!px-4 !py-2 disabled:opacity-60"
+              title="Generate resume content with AI"
+            >
+              {aiLoading.generateResume ? 'Generating...' : (
+                <>
+                  <HiOutlineSparkles className="w-4 h-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Generate Resume</span>
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleAnalyzeATS}
+              disabled={atsLoading || isAutosaving}
+              className="btn-secondary text-sm !px-3 sm:!px-4 !py-2 disabled:opacity-60"
+              title="Analyze ATS score"
+            >
+              {atsLoading ? 'Analyzing...' : 'Analyze ATS'}
+            </button>
+            <button
+              onClick={handleCopyAtsCurl}
+              className="btn-secondary text-sm !px-3 !py-2"
+              title="Copy ATS endpoint curl"
+            >
+              <HiOutlineClipboardCopy className="w-4 h-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Copy ATS Curl</span>
             </button>
             <span className="text-xs text-dark-500 dark:text-dark-400 hidden sm:block mr-2 font-medium">
               {isAutosaving ? 'Autosaving...' : 'All changes saved'}
@@ -581,16 +794,184 @@ export default function ResumeBuilder() {
                 ))}
               </div>
             )}
+
+            {activeSection === 'jobDescription' && (
+              <div className="space-y-4 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-dark-900 dark:text-white">Target Job Description</h2>
+                  <button
+                    onClick={handleAnalyzeATS}
+                    disabled={atsLoading}
+                    className="btn-secondary text-sm !px-3 !py-1.5 disabled:opacity-60"
+                  >
+                    {atsLoading ? 'Analyzing...' : 'Analyze ATS'}
+                  </button>
+                </div>
+                <textarea
+                  value={resume.jobDescription || ''}
+                  onChange={(e) => updateField('jobDescription', e.target.value)}
+                  className="input-field min-h-[220px] resize-y"
+                  placeholder="Paste the target job description (optional). ATS scoring will match your resume against this role."
+                  rows={9}
+                />
+                <p className="text-sm text-dark-500 dark:text-dark-400">
+                  Tip: Add the exact role description to get stronger keyword match suggestions.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* RIGHT: Live Preview Panel */}
         <div className="hidden lg:block w-1/2 bg-dark-100 dark:bg-dark-900 border-l border-dark-200 dark:border-dark-800 overflow-y-auto p-6">
-          <div className="max-w-[800px] mx-auto" ref={componentRef}>
+          <div className="max-w-[800px] mx-auto space-y-4">
+            <ATSPanel
+              atsResult={atsResult}
+              atsLoading={atsLoading}
+              onAnalyze={handleAnalyzeATS}
+              onApplyMissingSkills={handleApplyMissingSkills}
+              onImproveSummary={handleImproveSummaryFromATS}
+              onCleanSummary={handleCleanSummary}
+              improvingSummary={!!aiLoading.atsSummary}
+            />
+            <div ref={componentRef}>
             <ResumePreview resume={resume} />
+            </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ATSPanel({ atsResult, atsLoading, onAnalyze, onApplyMissingSkills, onImproveSummary, onCleanSummary, improvingSummary }) {
+  if (!atsResult) {
+    return (
+      <div className="bg-white dark:bg-dark-900 border border-dark-100 dark:border-dark-800 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold text-dark-900 dark:text-white">ATS Check</h3>
+          <button onClick={onAnalyze} disabled={atsLoading} className="btn-secondary text-xs !px-3 !py-1.5 disabled:opacity-60">
+            {atsLoading ? 'Analyzing...' : 'Run Check'}
+          </button>
+        </div>
+        <p className="text-sm text-dark-500 dark:text-dark-400">
+          Run ATS analysis to get score, keyword match, and priority improvements.
+        </p>
+      </div>
+    );
+  }
+
+  const categoryLabels = [
+    ['keywords', 'Keywords'],
+    ['structure', 'Structure'],
+    ['impact', 'Impact'],
+    ['formatting', 'Formatting'],
+  ];
+  const score = atsResult.overallScore || 0;
+  const scoreColor =
+    score >= 80 ? 'text-emerald-600' : score >= 65 ? 'text-amber-500' : 'text-red-500';
+  const scoreBarColor =
+    score >= 80 ? 'bg-emerald-500' : score >= 65 ? 'bg-amber-500' : 'bg-red-500';
+
+  return (
+    <div className="bg-white dark:bg-dark-900 border border-dark-100 dark:border-dark-800 rounded-xl p-4 space-y-4 shadow-soft">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-dark-900 dark:text-white">ATS Score</h3>
+          <p className="text-xs text-dark-500 dark:text-dark-400">
+            Last analyzed: {atsResult.analyzedAt ? new Date(atsResult.analyzedAt).toLocaleString() : 'N/A'}
+          </p>
+        </div>
+        <div className="text-right min-w-[96px]">
+          <p className={`text-3xl font-bold ${scoreColor}`}>{score}/100</p>
+          <p className="text-xs text-dark-500 dark:text-dark-400">
+            {score >= 80 ? 'Strong' : score >= 65 ? 'Needs tuning' : 'Needs work'}
+          </p>
+          <button onClick={onAnalyze} disabled={atsLoading} className="btn-secondary text-xs !px-2.5 !py-1 disabled:opacity-60">
+            {atsLoading ? 'Analyzing...' : 'Recheck'}
+          </button>
+        </div>
+      </div>
+
+      <div className="h-2.5 rounded-full bg-dark-100 dark:bg-dark-800 overflow-hidden">
+        <div className={`h-full ${scoreBarColor} transition-all duration-500`} style={{ width: `${Math.max(5, score)}%` }} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {categoryLabels.map(([key, label]) => (
+          <div key={key} className="rounded-lg border border-dark-100 dark:border-dark-800 px-3 py-2 bg-dark-50/60 dark:bg-dark-850/40">
+            <p className="text-xs text-dark-500 dark:text-dark-400 mb-1">{label}</p>
+            <p className="text-sm font-semibold text-dark-900 dark:text-white">{atsResult.categoryScores?.[key] || 0}</p>
+          </div>
+        ))}
+      </div>
+
+      {!!atsResult.criticalWarnings?.length && (
+        <div>
+          <p className="text-xs font-medium text-red-500 mb-1">Critical fixes</p>
+          <ul className="space-y-1">
+            {atsResult.criticalWarnings.slice(0, 3).map((warning) => (
+              <li key={warning} className="text-xs text-dark-600 dark:text-dark-300">- {warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {!!atsResult.missingKeywords?.length && (
+        <div>
+          <p className="text-xs font-medium text-amber-600 mb-1.5">Missing Keywords</p>
+          <div className="flex flex-wrap gap-1.5">
+            {atsResult.missingKeywords.slice(0, 10).map((keyword) => (
+              <span key={keyword} className="px-2 py-0.5 rounded-md text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+                {keyword}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button onClick={onApplyMissingSkills} className="btn-secondary text-xs !px-3 !py-1.5">
+          Add Missing Keywords to Skills
+        </button>
+        <button onClick={onImproveSummary} disabled={improvingSummary} className="btn-secondary text-xs !px-3 !py-1.5 disabled:opacity-60">
+          {improvingSummary ? 'Improving...' : 'Improve Summary for ATS'}
+        </button>
+        <button onClick={onCleanSummary} className="btn-secondary text-xs !px-3 !py-1.5">
+          Clean Summary Text
+        </button>
+      </div>
+
+      {!!atsResult.matchedKeywords?.length && (
+        <div>
+          <p className="text-xs font-medium text-emerald-600 mb-1 flex items-center gap-1">
+            <HiOutlineBadgeCheck className="w-4 h-4" /> Matched Keywords
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {atsResult.matchedKeywords.slice(0, 8).map((keyword) => (
+              <span key={keyword} className="px-2 py-0.5 rounded-md text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
+                {keyword}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!!atsResult.suggestions?.length && (
+        <div>
+          <p className="text-xs font-medium text-primary-600 mb-1.5">Top ATS Suggestions</p>
+          <div className="space-y-1.5">
+            {atsResult.suggestions.slice(0, 4).map((suggestion) => (
+              <div
+                key={suggestion}
+                className="text-xs text-dark-700 dark:text-dark-300 rounded-md border border-dark-100 dark:border-dark-800 px-2.5 py-1.5 bg-white/70 dark:bg-dark-900/30"
+              >
+                {suggestion}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -601,18 +982,189 @@ export default function ResumeBuilder() {
 function ResumePreview({ resume }) {
   const { personalInfo, summary, experience, education, skills, projects, certifications, template = 'modern' } = resume;
 
+  if (template === 'ats') {
+    const sectionBar = (title) => (
+      <div className="mt-4 bg-slate-200 border border-slate-300 px-3 py-1 text-center font-bold text-xs tracking-wider uppercase">
+        {title}
+      </div>
+    );
+
+    const contactLine = [
+      personalInfo?.email ? `Email: ${personalInfo.email}` : null,
+      personalInfo?.phone ? `Phone: ${personalInfo.phone}` : null,
+      personalInfo?.location ? personalInfo.location : null,
+    ].filter(Boolean);
+
+    const linksLine = [
+      personalInfo?.linkedin || null,
+      personalInfo?.github || null,
+      personalInfo?.website || null,
+    ].filter(Boolean);
+
+    const educationRows = (education || []).map((edu) => {
+      const year = (edu.endDate || edu.startDate || '').toString().trim();
+      const degree = `${edu.degree || ''}${edu.field ? ` (${edu.field})` : ''}`.trim();
+      const institute = (edu.institution || '').trim();
+      const cgpa = (edu.gpa || '').trim();
+      return { year, degree, institute, cgpa };
+    });
+
+    const safeSummary = (summary || '').trim();
+
+    return (
+      <div className="bg-white shadow-elevated rounded-lg p-8 min-h-[900px] text-black font-serif" style={{ fontSize: '12.5px', lineHeight: '1.55' }}>
+        {/* Header */}
+        <div className="text-center">
+          <div className="font-bold uppercase tracking-wide text-sm">
+            {(personalInfo?.fullName || 'Your Name').toUpperCase()}
+          </div>
+          {contactLine.length > 0 && (
+            <div className="mt-1 text-xs">
+              {contactLine.map((item, idx) => (
+                <span key={item}>
+                  {idx > 0 ? ' | ' : ''}
+                  {item}
+                </span>
+              ))}
+            </div>
+          )}
+          {linksLine.length > 0 && (
+            <div className="mt-1 text-xs text-blue-700 break-all">
+              {linksLine.map((item, idx) => (
+                <span key={item}>
+                  {idx > 0 ? ' | ' : ''}
+                  {item}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Summary (no bar in your sample, but keep clean paragraph) */}
+        {safeSummary && (
+          <p className="mt-3 text-justify">
+            {safeSummary}
+          </p>
+        )}
+
+        {/* Education table */}
+        {educationRows.length > 0 && (
+          <>
+            {sectionBar('Education')}
+            <div className="border border-slate-300 border-t-0">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-100">
+                    <th className="text-left px-3 py-2 w-[70px]">Year</th>
+                    <th className="text-left px-3 py-2">Degree</th>
+                    <th className="text-left px-3 py-2">Institute</th>
+                    <th className="text-right px-3 py-2 w-[110px]">CGPA/Marks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {educationRows.map((row, i) => (
+                    <tr key={`${row.institute}-${i}`} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                      <td className="px-3 py-2 align-top">{row.year || '—'}</td>
+                      <td className="px-3 py-2 align-top">{row.degree || '—'}</td>
+                      <td className="px-3 py-2 align-top">{row.institute || '—'}</td>
+                      <td className="px-3 py-2 align-top text-right font-semibold">{row.cgpa || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {/* Experience */}
+        {(experience || []).length > 0 && (
+          <>
+            {sectionBar('Experience')}
+            <div className="border border-slate-300 border-t-0 px-4 py-3">
+              <ul className="list-disc pl-5 space-y-2">
+                {experience.map((exp, i) => {
+                  const title = [exp.position, exp.company].filter(Boolean).join(' — ');
+                  const dates = `${exp.startDate || ''}${exp.startDate && (exp.endDate || exp.current) ? ' — ' : ''}${exp.current ? 'Present' : (exp.endDate || '')}`.trim();
+                  return (
+                    <li key={i}>
+                      <div className="flex justify-between gap-3">
+                        <div className="font-bold">{title || 'Experience'}</div>
+                        <div className="text-xs whitespace-nowrap">{dates}</div>
+                      </div>
+                      {exp.location && <div className="text-xs">{exp.location}</div>}
+                      {exp.description && <div className="mt-1">{exp.description}</div>}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </>
+        )}
+
+        {/* Projects */}
+        {(projects || []).length > 0 && (
+          <>
+            {sectionBar('Projects')}
+            <div className="border border-slate-300 border-t-0 px-4 py-3">
+              <ul className="list-disc pl-5 space-y-2">
+                {projects.map((proj, i) => (
+                  <li key={i}>
+                    <span className="font-bold">{proj.name || 'Project'}</span>
+                    {proj.description ? <span> : {proj.description}</span> : null}
+                    {proj.technologies ? <span className="text-xs"> (Tech: {proj.technologies})</span> : null}
+                    {proj.link ? <div className="text-xs text-blue-700 break-all">{proj.link}</div> : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
+
+        {/* Skills & Expertise */}
+        {(skills || []).length > 0 && (
+          <>
+            {sectionBar('Skills and Expertise')}
+            <div className="border border-slate-300 border-t-0 px-4 py-3">
+              <div className="text-xs">
+                <span className="font-bold">Skills</span>: {skills.filter(Boolean).join(' | ')}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Certifications */}
+        {(certifications || []).length > 0 && (
+          <>
+            {sectionBar('Certifications')}
+            <div className="border border-slate-300 border-t-0 px-4 py-3">
+              <ul className="list-disc pl-5 space-y-1.5">
+                {certifications.map((cert, i) => (
+                  <li key={i}>
+                    {cert.name}
+                    {cert.issuer ? ` — ${cert.issuer}` : ''}
+                    {cert.date ? ` (${cert.date})` : ''}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
   const tpl = {
     modern: {
       container: "font-sans",
-      header: "text-center mb-6 pb-4 border-b-2 border-primary-500",
-      name: "text-2xl font-bold text-dark-900 mb-1",
-      contact: "flex items-center justify-center gap-3 text-xs text-dark-500 flex-wrap",
-      links: "flex items-center justify-center gap-3 text-xs text-primary-600 mt-1 flex-wrap",
+      header: "mb-6 pb-4 border-b-2 border-primary-500",
+      name: "text-2xl font-bold text-dark-900 mb-1 tracking-wide",
+      contact: "flex items-center gap-3 text-xs text-dark-500 flex-wrap",
+      links: "flex items-center gap-3 text-xs text-primary-600 mt-1 flex-wrap",
       section: "mb-5",
       title: "text-sm font-bold uppercase tracking-wider text-primary-700 mb-2 border-b border-dark-200 pb-1",
       itemTitle: "font-semibold text-dark-900",
       itemSub: "text-dark-600",
-      date: "text-xs text-dark-500 whitespace-nowrap",
+      date: "text-xs text-dark-500 whitespace-nowrap pl-4 text-right min-w-[120px]",
       desc: "text-dark-700 mt-1",
       skillBox: "flex flex-wrap gap-1.5",
       skill: "px-2.5 py-0.5 bg-dark-50 rounded text-xs text-dark-700 border border-dark-100",
@@ -627,7 +1179,7 @@ function ResumePreview({ resume }) {
       title: "text-sm font-bold uppercase tracking-widest text-black mb-2 border-b border-black pb-1 text-center mt-6",
       itemTitle: "font-bold text-black",
       itemSub: "text-black",
-      date: "text-xs italic text-black whitespace-nowrap",
+      date: "text-xs italic text-black whitespace-nowrap pl-4 text-right min-w-[120px]",
       desc: "text-black mt-1",
       skillBox: "flex flex-wrap gap-x-3 gap-y-1 justify-center",
       skill: "text-xs text-black list-item ml-4",
@@ -642,7 +1194,7 @@ function ResumePreview({ resume }) {
       title: "text-xs font-bold uppercase tracking-widest text-dark-400 mb-4",
       itemTitle: "font-medium text-dark-900",
       itemSub: "text-dark-500",
-      date: "text-xs text-dark-400 whitespace-nowrap",
+      date: "text-xs text-dark-400 whitespace-nowrap pl-4 text-right min-w-[120px]",
       desc: "text-dark-600 mt-1.5 leading-relaxed",
       skillBox: "flex flex-wrap gap-x-4 gap-y-2",
       skill: "text-sm text-dark-700",
@@ -664,9 +1216,9 @@ function ResumePreview({ resume }) {
           {personalInfo?.location && <span>• {personalInfo.location}</span>}
         </div>
         <div className={style.links}>
-          {personalInfo?.linkedin && <span>{personalInfo.linkedin}</span>}
-          {personalInfo?.github && <span>• {personalInfo.github}</span>}
-          {personalInfo?.website && <span>• {personalInfo.website}</span>}
+          {personalInfo?.linkedin && <span className="break-all">{personalInfo.linkedin}</span>}
+          {personalInfo?.github && <span className="break-all">• {personalInfo.github}</span>}
+          {personalInfo?.website && <span className="break-all">• {personalInfo.website}</span>}
         </div>
       </div>
 
@@ -684,10 +1236,10 @@ function ResumePreview({ resume }) {
           <h2 className={style.title}>Experience</h2>
           {experience.map((exp, i) => (
             <div key={i} className="mb-4">
-              <div className="flex justify-between items-start">
-                <div>
+              <div className="flex justify-between items-start gap-4">
+                <div className="min-w-0 flex-1">
                   <p className={style.itemTitle}>{exp.position || 'Position'}</p>
-                  <p className={style.itemSub}>{exp.company}{exp.location ? `, ${exp.location}` : ''}</p>
+                  <p className={`${style.itemSub} break-words`}>{exp.company}{exp.location ? `, ${exp.location}` : ''}</p>
                 </div>
                 <p className={style.date}>
                   {exp.startDate}{exp.startDate && (exp.endDate || exp.current) ? ' — ' : ''}{exp.current ? 'Present' : exp.endDate}
@@ -705,10 +1257,10 @@ function ResumePreview({ resume }) {
           <h2 className={style.title}>Education</h2>
           {education.map((edu, i) => (
             <div key={i} className="mb-3">
-              <div className="flex justify-between items-start">
-                <div>
+              <div className="flex justify-between items-start gap-4">
+                <div className="min-w-0 flex-1">
                   <p className={style.itemTitle}>{edu.degree}{edu.field ? ` in ${edu.field}` : ''}</p>
-                  <p className={style.itemSub}>{edu.institution}{edu.gpa ? ` • GPA: ${edu.gpa}` : ''}</p>
+                  <p className={`${style.itemSub} break-words`}>{edu.institution}{edu.gpa ? ` • GPA: ${edu.gpa}` : ''}</p>
                 </div>
                 <p className={style.date}>
                   {edu.startDate}{edu.startDate && edu.endDate ? ' — ' : ''}{edu.endDate}

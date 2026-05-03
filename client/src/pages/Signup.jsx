@@ -14,9 +14,11 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpStep, setOtpStep] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signup, googleLogin } = useAuth();
+  const { signup, verifySignupOtp, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const validateEmail = (email) => {
@@ -48,11 +50,35 @@ export default function Signup() {
 
     setLoading(true);
     try {
-      await signup(name, email, password);
-      toast.success('Account created! Welcome to ResuAI 🎉');
-      setTimeout(() => navigate('/dashboard'), 100);
+      const data = await signup(name, email, password);
+      if (data?.requiresOtp) {
+        setOtpStep(true);
+        toast.success('OTP sent to your email for verification');
+      } else {
+        toast.error('Email verification is required');
+      }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Signup failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+
+    if (!otp || otp.trim().length !== 6) {
+      toast.error('Please enter the 6-digit OTP');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await verifySignupOtp(email, otp.trim());
+      toast.success('Email verified! Welcome to ResuAI 🎉');
+      setTimeout(() => navigate('/dashboard'), 100);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'OTP verification failed');
     } finally {
       setLoading(false);
     }
@@ -112,89 +138,111 @@ export default function Signup() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-dark-700 dark:text-dark-300 mb-1.5">
-                Full name
-              </label>
-              <div className="relative">
-                <HiOutlineUser className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+          <form onSubmit={otpStep ? handleVerifyOtp : handleSubmit} className="space-y-4">
+            {!otpStep ? (
+              <>
+                {/* Name */}
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-dark-700 dark:text-dark-300 mb-1.5">
+                    Full name
+                  </label>
+                  <div className="relative">
+                    <HiOutlineUser className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                    <input
+                      id="name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="input-field !pl-11"
+                      placeholder="John Doe"
+                      autoComplete="name"
+                    />
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-dark-700 dark:text-dark-300 mb-1.5">
+                    Email address
+                  </label>
+                  <div className="relative">
+                    <HiOutlineMail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="input-field !pl-11"
+                      placeholder="you@example.com"
+                      autoComplete="email"
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-dark-700 dark:text-dark-300 mb-1.5">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <HiOutlineLockClosed className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="input-field !pl-11 !pr-11"
+                      placeholder="Min. 6 characters"
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-dark-400 hover:text-dark-600 transition-colors"
+                    >
+                      {showPassword ? <HiOutlineEyeOff className="w-5 h-5" /> : <HiOutlineEye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm Password */}
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-dark-700 dark:text-dark-300 mb-1.5">
+                    Confirm password
+                  </label>
+                  <div className="relative">
+                    <HiOutlineLockClosed className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                    <input
+                      id="confirmPassword"
+                      type={showPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="input-field !pl-11"
+                      placeholder="Re-enter your password"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div>
+                <label htmlFor="otp" className="block text-sm font-medium text-dark-700 dark:text-dark-300 mb-1.5">
+                  Enter OTP
+                </label>
                 <input
-                  id="name"
+                  id="otp"
                   type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="input-field !pl-11"
-                  placeholder="John Doe"
-                  autoComplete="name"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="input-field tracking-[0.4em] text-center text-lg"
+                  placeholder="000000"
+                  autoComplete="one-time-code"
                 />
+                <p className="mt-2 text-xs text-dark-500 dark:text-dark-400">
+                  We sent a 6-digit OTP to {email}. Your account will be created only after verification.
+                </p>
               </div>
-            </div>
-
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-dark-700 dark:text-dark-300 mb-1.5">
-                Email address
-              </label>
-              <div className="relative">
-                <HiOutlineMail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="input-field !pl-11"
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-dark-700 dark:text-dark-300 mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <HiOutlineLockClosed className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="input-field !pl-11 !pr-11"
-                  placeholder="Min. 6 characters"
-                  autoComplete="new-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-dark-400 hover:text-dark-600 transition-colors"
-                >
-                  {showPassword ? <HiOutlineEyeOff className="w-5 h-5" /> : <HiOutlineEye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-dark-700 dark:text-dark-300 mb-1.5">
-                Confirm password
-              </label>
-              <div className="relative">
-                <HiOutlineLockClosed className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
-                <input
-                  id="confirmPassword"
-                  type={showPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="input-field !pl-11"
-                  placeholder="Re-enter your password"
-                  autoComplete="new-password"
-                />
-              </div>
-            </div>
+            )}
 
             {/* Submit */}
             <button
@@ -203,14 +251,26 @@ export default function Signup() {
               className="btn-primary w-full !py-3.5 text-base disabled:opacity-60 disabled:cursor-not-allowed !mt-6"
             >
               {loading ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-2">
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Creating account...
+                  {otpStep ? 'Verifying OTP...' : 'Creating account...'}
                 </div>
               ) : (
-                'Create account'
+                otpStep ? 'Verify OTP' : 'Create account'
               )}
             </button>
+            {otpStep && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpStep(false);
+                  setOtp('');
+                }}
+                className="btn-secondary w-full !py-3 text-sm"
+              >
+                Back to signup form
+              </button>
+            )}
           </form>
 
           {/* Divider */}

@@ -12,9 +12,11 @@ import { GoogleLogin } from '@react-oauth/google';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpStep, setOtpStep] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login, googleLogin } = useAuth();
+  const { login, verifyLoginOtp, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const validateEmail = (email) => {
@@ -36,11 +38,35 @@ export default function Login() {
 
     setLoading(true);
     try {
-      await login(email, password);
+      const data = await login(email, password);
+      if (data?.requiresOtp) {
+        setOtpStep(true);
+        toast.success('OTP sent to your email');
+      } else {
+        toast.error('OTP verification is required');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+
+    if (!otp || otp.trim().length !== 6) {
+      toast.error('Please enter the 6-digit OTP');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await verifyLoginOtp(email, otp.trim());
       toast.success('Welcome back!');
       setTimeout(() => navigate('/dashboard'), 100);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Login failed');
+      toast.error(error.response?.data?.error || 'OTP verification failed');
     } finally {
       setLoading(false);
     }
@@ -83,7 +109,7 @@ export default function Login() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={otpStep ? handleVerifyOtp : handleSubmit} className="space-y-5">
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-dark-700 dark:text-dark-300 mb-1.5">
@@ -103,31 +129,50 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-dark-700 dark:text-dark-300 mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <HiOutlineLockClosed className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="input-field !pl-11 !pr-11"
-                  placeholder="Enter your password"
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-dark-400 hover:text-dark-600 transition-colors"
-                >
-                  {showPassword ? <HiOutlineEyeOff className="w-5 h-5" /> : <HiOutlineEye className="w-5 h-5" />}
-                </button>
+            {!otpStep ? (
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-dark-700 dark:text-dark-300 mb-1.5">
+                  Password
+                </label>
+                <div className="relative">
+                  <HiOutlineLockClosed className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="input-field !pl-11 !pr-11"
+                    placeholder="Enter your password"
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-dark-400 hover:text-dark-600 transition-colors"
+                  >
+                    {showPassword ? <HiOutlineEyeOff className="w-5 h-5" /> : <HiOutlineEye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <label htmlFor="otp" className="block text-sm font-medium text-dark-700 dark:text-dark-300 mb-1.5">
+                  Enter OTP
+                </label>
+                <input
+                  id="otp"
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="input-field tracking-[0.4em] text-center text-lg"
+                  placeholder="000000"
+                  autoComplete="one-time-code"
+                />
+                <p className="mt-2 text-xs text-dark-500 dark:text-dark-400">
+                  We sent a 6-digit OTP to {email}. Login is blocked until OTP verification succeeds.
+                </p>
+              </div>
+            )}
 
             {/* Submit */}
             <button
@@ -136,14 +181,26 @@ export default function Login() {
               className="btn-primary w-full !py-3.5 text-base disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-2">
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Logging in...
+                  {otpStep ? 'Verifying OTP...' : 'Logging in...'}
                 </div>
               ) : (
-                'Log in'
+                otpStep ? 'Verify OTP' : 'Log in'
               )}
             </button>
+            {otpStep && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpStep(false);
+                  setOtp('');
+                }}
+                className="btn-secondary w-full !py-3 text-sm"
+              >
+                Back to password step
+              </button>
+            )}
           </form>
 
           {/* Divider */}

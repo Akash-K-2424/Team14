@@ -25,19 +25,29 @@ export default function Dashboard() {
 
   // Fetch resumes on mount
   useEffect(() => {
-    fetchResumes();
-  }, []);
+    let isMounted = true;
 
-  const fetchResumes = async () => {
-    try {
-      const { data } = await api.get('/resumes');
-      setResumes(data);
-    } catch (error) {
-      toast.error('Failed to load resumes');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchResumes = async () => {
+      try {
+        const { data } = await api.get('/resumes');
+        if (isMounted) {
+          setResumes(data);
+        }
+      } catch {
+        toast.error('Failed to load resumes');
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchResumes();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleCreate = async () => {
     setCreating(true);
@@ -47,7 +57,7 @@ export default function Dashboard() {
       });
       toast.success('Resume created!');
       navigate(`/builder/${data._id}`);
-    } catch (error) {
+    } catch {
       toast.error('Failed to create resume');
     } finally {
       setCreating(false);
@@ -61,7 +71,7 @@ export default function Dashboard() {
       await api.delete(`/resumes/${id}`);
       setResumes((prev) => prev.filter((r) => r._id !== id));
       toast.success('Resume deleted');
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete resume');
     }
   };

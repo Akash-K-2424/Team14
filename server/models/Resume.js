@@ -42,6 +42,24 @@ const certificationSchema = new mongoose.Schema({
   link: { type: String, default: '' },
 });
 
+const atsSchema = new mongoose.Schema(
+  {
+    overallScore: { type: Number, default: 0 },
+    categoryScores: {
+      keywords: { type: Number, default: 0 },
+      structure: { type: Number, default: 0 },
+      impact: { type: Number, default: 0 },
+      formatting: { type: Number, default: 0 },
+    },
+    matchedKeywords: [{ type: String }],
+    missingKeywords: [{ type: String }],
+    suggestions: [{ type: String }],
+    criticalWarnings: [{ type: String }],
+    analyzedAt: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 // ---- Main Resume Schema ----
 
 const resumeSchema = new mongoose.Schema(
@@ -58,7 +76,7 @@ const resumeSchema = new mongoose.Schema(
     },
     template: {
       type: String,
-      enum: ['modern', 'classic', 'minimal'],
+      enum: ['modern', 'classic', 'minimal', 'ats'],
       default: 'modern',
     },
 
@@ -75,6 +93,10 @@ const resumeSchema = new mongoose.Schema(
 
     // Professional Summary
     summary: {
+      type: String,
+      default: '',
+    },
+    jobDescription: {
       type: String,
       default: '',
     },
@@ -96,6 +118,10 @@ const resumeSchema = new mongoose.Schema(
 
     // Languages (array of strings)
     languages: [{ type: String }],
+    ats: {
+      type: atsSchema,
+      default: () => ({}),
+    },
 
     // Last saved timestamp (for autosave)
     lastSaved: {
