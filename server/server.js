@@ -16,6 +16,9 @@ console.log('Starting ResuAI server…');
 
 // Initialize Express
 const app = express();
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 
 // ========================================
 // Middleware
@@ -60,6 +63,21 @@ app.use('/api/ai', require('./routes/ai'));
 app.use('/api/members', require('./routes/member'));
 
 // ========================================
+// Production: React SPA (build client with `npm run build` in ../client)
+// ========================================
+const clientDist = path.join(__dirname, '../client/dist');
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(clientDist));
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(clientDist, 'index.html'), (err) => {
+      if (err) next(err);
+    });
+  });
+}
+
+// ========================================
 // 404 Handler
 // ========================================
 app.use((req, res) => {
@@ -85,7 +103,7 @@ const startServer = async () => {
   // Connect to MongoDB
   await connectDB();
 
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🚀 ResuAI Server running on port ${PORT}`);
     console.log(`   Health: http://localhost:${PORT}/api/health\n`);
   });
