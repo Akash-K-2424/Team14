@@ -7,6 +7,13 @@ const path = require('path');
 // Load environment variables
 dotenv.config();
 
+if (!process.env.MONGO_URI || !String(process.env.MONGO_URI).trim()) {
+  console.error('✗ MONGO_URI is missing or empty. Set it in server/.env (see .env.example).');
+  process.exit(1);
+}
+
+console.log('Starting ResuAI server…');
+
 // Initialize Express
 const app = express();
 

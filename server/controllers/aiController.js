@@ -1,10 +1,31 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+/** Lazily load Gemini SDK so a missing install does not crash the whole API at startup. */
+let GeminiCtor;
+const loadGeminiCtor = () => {
+  if (GeminiCtor !== undefined) return GeminiCtor;
+  try {
+    GeminiCtor = require('@google/generative-ai').GoogleGenerativeAI;
+  } catch (err) {
+    if (err.code === 'MODULE_NOT_FOUND') {
+      console.warn(
+        '⚠ @google/generative-ai is not installed. Run `npm install` in the server folder. AI endpoints will use templates only until then.'
+      );
+      GeminiCtor = null;
+    } else {
+      throw err;
+    }
+  }
+  return GeminiCtor;
+};
 
 const getGeminiClient = () => {
+  const GoogleGenerativeAI = loadGeminiCtor();
+  if (!GoogleGenerativeAI) return null;
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   return new GoogleGenerativeAI(apiKey);
 };
+
+loadGeminiCtor();
 
 const getGeminiModelName = () => process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 
